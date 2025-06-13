@@ -8,6 +8,7 @@ from enum import Enum
 from openai import OpenAI
 
 import prompt
+import gen
 
 class WhichScreen(Enum) :
     TASK_HALL_INIT = 1
@@ -39,6 +40,22 @@ class Utils :
         return tuple(map(float, pos_str.split(",")))
 
     @staticmethod
+    def click_position(pos_name : str, description : str) -> None :
+        pos = Utils.get_position_env(pos_name)
+
+        subprocess.run([
+            "adb", "shell", "input", "tap", 
+            str(pos[0]), 
+            str(pos[1])
+        ])
+
+        print("🔫 Click {} button on position ({}, {}).".format(
+            description,
+            pos[0],
+            pos[1]
+        ))
+
+    @staticmethod
     def ocr_result(name : str) -> str :
         
         ocr_text = pytesseract.image_to_string(
@@ -48,7 +65,7 @@ class Utils :
 
         print("🔍 OCR result of {} is \"{}\"".format(name, ocr_text))
 
-        return ocr_text.lower()
+        return ocr_text.lower().replace(" ", "")
 
     @staticmethod
     def which_screen() -> None :
@@ -62,7 +79,6 @@ class Utils :
         ocr_text = Utils.ocr_result(screenshot)
 
         _ = lambda name : os.getenv(name).split(",")
-
         characteristic : list[tuple[list[str], WhichScreen]] = [
             (_("text_task_hall_init"),      WhichScreen.TASK_HALL_INIT),
             (_("text_task_hall_waiting"),   WhichScreen.TASK_HALL_WAITING),
@@ -73,11 +89,14 @@ class Utils :
         for t in characteristic :
             for s in t[0] :
                 if s.lower() in ocr_text :
+                    global CURRENT_SCREEN
                     CURRENT_SCREEN = t[1]
                     print("🌲 Now we are at {} screen.".format(t[1].name))
+                    os.remove("./tmp/" + screenshot)
                     return
 
-        os.remove(screenshot)
+        os.remove("./tmp/" + screenshot)
+
 
 class DeviceActions :
     @staticmethod
@@ -111,7 +130,7 @@ class DeviceActions :
         name = "{}-{}.png".format(prefix, timestamp)
 
         android_path = os.getenv("android_device_screenshot_path") + name
-        local_path = os.path.join(os.getcwd(), "tmp", name)
+        local_path = os.path.join(os.getcwd(), "tmp/", name)
         
         subprocess.run(["adb", "shell", "screencap", "-p", android_path])
         print("📸 Take screenshot at Android devices, name: {}.".format(name))
@@ -122,6 +141,12 @@ class DeviceActions :
 
         return name
 
+    @staticmethod
+    def transfer_answer_picture(name : str) -> None :
+        android_path = os.getenv("android_device_screenshot_path")
+        local_path = os.path.join(os.getcwd(), "tmp/", name)
+        subprocess.run(["adb", "push", local_path, android_path])
+
 class PageActions : ...
 
 class TaskHallInitActions(PageActions) :
@@ -131,20 +156,7 @@ class TaskHallInitActions(PageActions) :
         This function will click the button to get question on the device.
         """
 
-        # Load from environment
-
-        button_pos = Utils.get_position_env("button_get_question")
-
-        subprocess.run([
-            "adb", "shell", "input", "tap", 
-            str(button_pos[0]), 
-            str(button_pos[1])
-        ])
-
-        print("🔫 Click get question button on position ({}, {}).".format(
-            button_pos[0],
-            button_pos[1]
-        ))
+        Utils.click_position("button_get_question", "get question")
 
 class QuestionActions(PageActions) :
     @staticmethod
@@ -153,35 +165,36 @@ class QuestionActions(PageActions) :
 
     @staticmethod
     def open_user_picture() -> None :
-        user_picture_pos = Utils.get_position_env("button_user_question_picture")
-
-        subprocess.run([
-            "adb", "shell", "input", "tap",
-            str(user_picture_pos[0]),
-            str(user_picture_pos[1])
-        ])
-
-        print("🔫 Click user question picture button on position ({}, {}).".format(
-            user_picture_pos[0],
-            user_picture_pos[1]
-        ))
+        Utils.click_position("button_user_question_picture", "user question picture")
 
     @staticmethod
     def close_user_picture() -> None :
-        close_pos = Utils.get_position_env("button_user_question_picture")
+        Utils.click_position("button_user_question_picture", "close user question picture")
 
-        # Actually, press anywhere can also cause user picture to close
+    @staticmethod
+    def take_from_gallery() -> None :
+        Utils.click_position("button_take_from_gallery", "take from gallery")
 
-        subprocess.run([
-            "adb", "shell", "input", "tap",
-            str(close_pos[0]),
-            str(close_pos[1])
-        ])
+    @staticmethod
+    def select_first_picture() -> None :
+        Utils.click_position("button_select_first_picture", "select first picture")
+    
+    @staticmethod
+    def confirm_first_picture() -> None :
+        Utils.click_position("button_confirm_first_picture", "confirm first picture")
 
-        print("🔫 Click close user question picture button on position ({}, {}).".format(
-            close_pos[0],
-            close_pos[1]
-        ))
+    @staticmethod
+    def confirm_upload() -> None :
+        Utils.click_position("button_confirm_upload", "confirm upload")
+    
+    @staticmethod
+    def upload_answer() -> None :
+        Utils.click_position("button_upload_answer", "upload answer")
+
+    @staticmethod
+    def confirm_answer() -> None :
+        Utils.click_position("button_confirm_answer", "confirm answer")
+
 
 class ModelSolving :
     @staticmethod
@@ -209,7 +222,7 @@ class ModelSolving :
         certainty = rephrased_json.certainty
 
         if (certainty < rephrased_certainty_value) :
-            print("🐣 AI isn't sure for its rephrased question: {}.\n   Please type y/n for continuation.".format(rephrased))
+            print("🐣 AI isn't sure for its rephrased question: {}.\n   Please type y/n to continue.".format(rephrased))
             result = input()
 
             while result.lower() != "y" and result.lower() != "n" :
@@ -225,11 +238,52 @@ class ModelSolving :
 
 
     @staticmethod
-    def get_ai_answer(rephrased : str) -> str :
-        ...
+    def get_ai_answer(rephrased : str) -> tuple[str, str] :
+        answer_certainty_value = os.getenv("answer_certainty")
+
+        messages = [
+            { "role": "system", "content": prompt.prompt_answer_question },
+            { "role": "user",   "content": rephrased }
+        ]
+
+        response_json = CLIENT.chat.completions.create(
+            model = "deepseek-chat",
+            messages = messages,
+            response_format = {
+                "type": "json_object"
+            },
+            temperature = 0.0,
+            stream = False
+        )
+
+        answer_analysis_json = json.loads(response_json.choices[0].message.content)
+        answer = answer_analysis_json.answer
+        analysis = answer_analysis_json.analysis
+        certainty = answer_analysis_json.certainty
+        
+        if certainty < answer_certainty_value :
+            print("🐣 AI isn't sure for its answer: {}.\n   Please type y/n to continue. You can open your Firefox to review".format(answer))
+            name = gen.generate_html(answer, analysis)
+            subprocess.run(["firefox", "./tmp/{}".format(name)])
+
+            result = input()
+
+            while result.lower() != "y" and result.lower() != "n" :
+                print("💬 You didn't type y or n. Please try again.")
+                result = input()
+
+            if result.lower() == "y" :
+                print("🤖 Answer question as {}.".format(rephrased))
+                os.remove("./tmp/{}".format(name))
+                return (answer, analysis)
+            else :
+                print("💥 Answer is not correct.")
+                exit()
 
 if __name__ == "__main__" :
     load_dotenv()
+
+    _ = lambda : time.sleep(8)
 
     while True :
         match CURRENT_SCREEN :
@@ -237,12 +291,31 @@ if __name__ == "__main__" :
                 TaskHallInitActions.get_question()
             case WhichScreen.QUESTION :
                 overall = QuestionActions.take_user_question()
+                _()
                 QuestionActions.open_user_picture()
+                _()
                 details = QuestionActions.take_user_question()
+                _()
                 QuestionActions.close_user_picture()
+                _()
                 rephrased = ModelSolving.get_rephrased_question([overall, details])
-                answer = ModelSolving.get_ai_answer(rephrased)
+                answer, analysis = ModelSolving.get_ai_answer(rephrased)
+                html_name = gen.generate_html(answer, analysis)
+                picture_name = gen.html_to_picture(html_name)
+                _()
+                DeviceActions.transfer_answer_picture(picture_name)
+                QuestionActions.take_from_gallery()
+                _()
+                QuestionActions.select_first_picture()
+                _()
+                QuestionActions.confirm_first_picture()
+                _()
+                QuestionActions.confirm_upload()
+                _()
+                QuestionActions.upload_answer()
+                _()
+                QuestionActions.confirm_answer()
 
-        time.sleep(8)
+        _()
         Utils.which_screen()
         DeviceActions.wakeup_screen()

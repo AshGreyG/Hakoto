@@ -2,3 +2,7 @@
 **/.env
 
 **/tmp
+
+**/test/*.html
+
+**/__pycache__

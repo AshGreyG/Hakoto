@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>No-Picture-Example</title>
+  <style>
+    body {
+      background-image: url(../assets/no-picture.jpg);
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: contain;
+      height: 800px;
+      position: relative;
+    }
+
+    .answer {
+      font-size: small;
+      position: absolute;
+      top: 95px;
+      left: 385px;
+      width: 485px;
+    }
+
+    .analysis {
+      font-size: small;
+      position: absolute;
+      top: 218px;
+      left: 385px;
+      width: 485px
+    }
+  </style>
+</head>
+<body>
+  <div class="answer">
+    {answer}
+  </div>
+  <div class="analysis">
+    {analysis}
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body>
+</html>

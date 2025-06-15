@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>No-Picture-Example</title>
+  <style>
+    body {
+      background-image: url(../assets/no-picture.jpg);
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: contain;
+      height: 800px;
+      position: relative;
+    }
+
+    .answer {
+      font-size: small;
+      position: absolute;
+      top: 95px;
+      left: 385px;
+      width: 485px;
+    }
+
+    .analysis {
+      font-size: small;
+      position: absolute;
+      top: 218px;
+      left: 385px;
+      width: 485px;
+    }
+  </style>
+</head>
+<body>
+  <div class="answer">
+<span class="math inline">\(k=\pm\frac{\sqrt{5+\sqrt{7}}}{2}\)</span>
+  </div>
+  <div class="analysis">
+<p>由离心率 <span class="math inline">\(e=\frac{c}{a}=\sqrt{3}\)</span>
+得 <span class="math inline">\(c=\sqrt{3}a\)</span>，又 <span
+class="math inline">\(c=2\sqrt{2}\)</span>，故 <span
+class="math inline">\(a=\frac{2\sqrt{6}}{3}\)</span>，<span
+class="math inline">\(b^2=c^2-a^2=\frac{16}{3}\)</span>。双曲线方程为
+<span
+class="math inline">\(\frac{9x^2}{32}-\frac{3y^2}{16}=1\)</span>。</p>
+<p>设直线 <span class="math inline">\(l:
+y=k(x-2\sqrt{2})\)</span>，与双曲线联立得： <span
+class="math inline">\(\frac{9x^2}{32}-\frac{3[k(x-2\sqrt{2})]^2}{16}=1\)</span>，整理得
+<span
+class="math inline">\((9-6k^2)x^2+24\sqrt{2}k^2x-(48k^2+32)=0\)</span>。</p>
+<p>设 <span class="math inline">\(M(x_1,y_1)\)</span>, <span
+class="math inline">\(N(x_2,y_2)\)</span>，由 <span
+class="math inline">\(|FM|=5|FN|\)</span> 得 <span
+class="math inline">\(x_1-2\sqrt{2}=-5(x_2-2\sqrt{2})\)</span>，即 <span
+class="math inline">\(x_1+5x_2=12\sqrt{2}\)</span>。由韦达定理 <span
+class="math inline">\(x_1+x_2=-\frac{24\sqrt{2}k^2}{9-6k^2}\)</span>，<span
+class="math inline">\(x_1x_2=-\frac{48k^2+32}{9-6k^2}\)</span>。</p>
+<p>联立解得 <span
+class="math inline">\(x_2=\frac{3\sqrt{2}(4k^2+3)}{9-6k^2}\)</span>，代入
+<span class="math inline">\(x_1=12\sqrt{2}-5x_2\)</span>
+后代入韦达定理得： <span
+class="math inline">\(12\sqrt{2}-4x_2=-\frac{24\sqrt{2}k^2}{9-6k^2}\)</span>，化简得
+<span class="math inline">\(16k^4-40k^2+9=0\)</span>。</p>
+<p>解得 <span
+class="math inline">\(k^2=\frac{5\pm\sqrt{7}}{4}\)</span>，即 <span
+class="math inline">\(k=\pm\frac{\sqrt{5\pm\sqrt{7}}}{2}\)</span>。经检验，<strong style="color: red">当
+<span class="math inline">\(k^2=\frac{5+\sqrt{7}}{4}\)</span> 时满足
+<span class="math inline">\(\Delta&gt;0\)</span></strong>，故 <span
+class="math inline">\(k=\pm\frac{\sqrt{5+\sqrt{7}}}{2}\)</span>。</p>
+    </div>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body>
+</html>

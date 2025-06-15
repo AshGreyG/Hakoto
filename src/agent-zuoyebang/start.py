@@ -1,3 +1,4 @@
+import base64
 import subprocess
 import os
 import time
@@ -6,6 +7,7 @@ import pytesseract
 from dotenv import load_dotenv
 from enum import Enum
 from openai import OpenAI
+from volcenginesdkarkruntime import Ark
 
 import prompt
 import gen
@@ -18,10 +20,18 @@ class WhichScreen(Enum) :
 
 CURRENT_SCREEN = WhichScreen.TASK_HALL_INIT
 
-CLIENT = OpenAI(
-    api_key = os.getenv("ai_api_key"),
-    base_url = os.getenv("ai_base_url")
-)
+REPHRASE_CLIENT = Ark(api_key = "")
+ANSWER_CLIENT = OpenAI(api_key = "", base_url = "")
+
+def init_models() -> None :
+    global ANSWER_CLIENT
+    ANSWER_CLIENT = OpenAI(
+        api_key = os.getenv("answer_ai_api_key"),
+        base_url = os.getenv("answer_ai_base_url")
+    )
+
+    global REPHRASE_CLIENT
+    REPHRASE_CLIENT = Ark(api_key = os.getenv("rephrase_ai_api_key"))
 
 class Utils :
     @staticmethod
@@ -66,6 +76,11 @@ class Utils :
         print("🔍 OCR result of {} is \"{}\"".format(name, ocr_text))
 
         return ocr_text.lower().replace(" ", "")
+
+    @staticmethod
+    def encode_image(name : str) -> str :
+        with open("./tmp/{}".format(name), "rb") as img :
+            return base64.b64encode(img.read()).decode("utf-8")
 
     @staticmethod
     def which_screen() -> None :
@@ -130,7 +145,7 @@ class DeviceActions :
         name = "{}-{}.png".format(prefix, timestamp)
 
         android_path = os.getenv("android_device_screenshot_path") + name
-        local_path = os.path.join(os.getcwd(), "tmp/", name)
+        local_path = "./tmp/{}".format(name)
         
         subprocess.run(["adb", "shell", "screencap", "-p", android_path])
         print("📸 Take screenshot at Android devices, name: {}.".format(name))
@@ -144,7 +159,7 @@ class DeviceActions :
     @staticmethod
     def transfer_answer_picture(name : str) -> None :
         android_path = os.getenv("android_device_screenshot_path")
-        local_path = os.path.join(os.getcwd(), "tmp/", name)
+        local_path = "./tmp/{}".format(name)
         subprocess.run(["adb", "push", local_path, android_path])
 
 class PageActions : ...
@@ -199,16 +214,25 @@ class QuestionActions(PageActions) :
 class ModelSolving :
     @staticmethod
     def get_rephrased_question(names : list[str]) -> str :
-        ocr_texts = [Utils.ocr_result(name) for name in names]
         rephrased_certainty_value = float(os.getenv("rephrased_certainty"))
+
+        images_base64_content = []
+
+        for name in names :
+            images_base64_content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": "data:image/png;base64,{}".format(Utils.encode_image(name))
+                }
+            })
 
         messages = [
             { "role": "system", "content": prompt.prompt_rephrase_question},
-            { "role": "user",   "content": str(ocr_texts) }
+            { "role": "user",   "content": images_base64_content}
         ]
 
-        response_json = CLIENT.chat.completions.create(
-            model = "deepseek-chat",
+        response_json = REPHRASE_CLIENT.chat.completions.create(
+            model = "doubao-1.5-vision-pro-250328",
             messages = messages,
             response_format = {
                 "type": "json_object"
@@ -218,10 +242,13 @@ class ModelSolving :
         )
 
         rephrased_json = json.loads(response_json.choices[0].message.content)
-        rephrased = rephrased_json.rephrased_question
-        certainty = rephrased_json.certainty
 
-        if (certainty < rephrased_certainty_value) :
+        print("🤖 Get rephrased question as {}.".format(rephrased_json))
+
+        rephrased = rephrased_json["rephrased_question"]
+        certainty = rephrased_json["certainty"]
+
+        if (certainty <= rephrased_certainty_value) :
             print("🐣 AI isn't sure for its rephrased question: {}.\n   Please type y/n to continue.".format(rephrased))
             result = input()
 
@@ -239,14 +266,14 @@ class ModelSolving :
 
     @staticmethod
     def get_ai_answer(rephrased : str) -> tuple[str, str] :
-        answer_certainty_value = os.getenv("answer_certainty")
+        answer_certainty_value = float(os.getenv("answer_certainty"))
 
         messages = [
             { "role": "system", "content": prompt.prompt_answer_question },
             { "role": "user",   "content": rephrased }
         ]
 
-        response_json = CLIENT.chat.completions.create(
+        response_json = ANSWER_CLIENT.chat.completions.create(
             model = "deepseek-chat",
             messages = messages,
             response_format = {
@@ -257,11 +284,13 @@ class ModelSolving :
         )
 
         answer_analysis_json = json.loads(response_json.choices[0].message.content)
-        answer = answer_analysis_json.answer
-        analysis = answer_analysis_json.analysis
-        certainty = answer_analysis_json.certainty
+        answer = answer_analysis_json["answer"]
+        analysis = answer_analysis_json["analysis"]
+        certainty = answer_analysis_json["certainty"]
+
+        print("🤖 Answer to this question is {}".format(analysis))
         
-        if certainty < answer_certainty_value :
+        if certainty <= answer_certainty_value :
             print("🐣 AI isn't sure for its answer: {}.\n   Please type y/n to continue. You can open your Firefox to review".format(answer))
             name = gen.generate_html(answer, analysis)
             subprocess.run(["firefox", "./tmp/{}".format(name)])
@@ -282,6 +311,7 @@ class ModelSolving :
 
 if __name__ == "__main__" :
     load_dotenv()
+    init_models()
 
     _ = lambda : time.sleep(8)
 

@@ -1,7 +1,7 @@
 prompt_rephrase_question = r"""
 
-Please rephrase the user's question in Chinese using the text obtained
-from image OCR, which contains both exam questions and text from interface
+Please rephrase the user's question in Chinese using the base64 format of 
+original pictures, which contains both exam questions and text from interface
 components. Remove the text from interface components to make the question
 clear and easy to understand. Return the result in a JSON format similar to
 the following:
@@ -18,8 +18,10 @@ EXAMPLE_RETURN_JSON
 The `rephrased_question` should be markdown text, please use LaTeX to display 
 math formulas. And you don't need to use structured syntax like list or table
 to display the rephrased question. If there are multiple possible questions in
-OCR text, please relate different texts in the text list, rephrase the most
+the picture, please relate different texts in the text list, rephrase the most
 possible question.
+
++ DO combine user questions and the question text.
 
 EXAMPLE_`rephrased_question`_CONTENT
 
@@ -68,22 +70,25 @@ question.
   only use `$` syntax).
 + DO NOT use title (`#`), list (`+`), italic (`*`), emphasize (`**`), table or other
   structured syntaxes. You should only use plaintext and LaTeX-style math formulas.
++ DO NOT escape calculation steps like finding the derivative.
 + DO use <strong style="color: red;"></strong> to wrap the important or key part.
++ You MUST use at least <strong style="color: red;"></strong> once.
++ DO escape `\` to `\\`, for example, return command like `\\frac`
 
 EXAMPLE_`analysis`_CONTENT
 
 ``` markdown
-由离心率 $e=\frac{c}{a}=\sqrt{3}$ 得 $c=\sqrt{3}a$，又 $c=2\sqrt{2}$，故 $a=\frac{2\sqrt{6}}{3}$，$b^2=c^2-a^2=\frac{16}{3}$。双曲线方程为 $\frac{9x^2}{32}-\frac{3y^2}{16}=1$。
+由离心率 $e=\\frac{c}{a}=\\sqrt{3}$ 得 $c=\\sqrt{3}a$，又 $c=2\\sqrt{2}$，故 $a=\\frac{2\\sqrt{6}}{3}$，$b^2=c^2-a^2=\\frac{16}{3}$。双曲线方程为 $\\frac{9x^2}{32}-\\frac{3y^2}{16}=1$。
 
-设直线 $l: y=k(x-2\sqrt{2})$，与双曲线联立得：
-$\frac{9x^2}{32}-\frac{3[k(x-2\sqrt{2})]^2}{16}=1$，整理得 $(9-6k^2)x^2+24\sqrt{2}k^2x-(48k^2+32)=0$。
+设直线 $l: y=k(x-2\\sqrt{2})$，与双曲线联立得：
+$\\frac{9x^2}{32}-\\frac{3[k(x-2\\sqrt{2})]^2}{16}=1$，整理得 $(9-6k^2)x^2+24\\sqrt{2}k^2x-(48k^2+32)=0$。
 
-设 $M(x_1,y_1)$, $N(x_2,y_2)$，由 $|FM|=5|FN|$ 得 $x_1-2\sqrt{2}=-5(x_2-2\sqrt{2})$，即 $x_1+5x_2=12\sqrt{2}$。由韦达定理 $x_1+x_2=-\frac{24\sqrt{2}k^2}{9-6k^2}$，$x_1x_2=-\frac{48k^2+32}{9-6k^2}$。
+设 $M(x_1,y_1)$, $N(x_2,y_2)$，由 $|FM|=5|FN|$ 得 $x_1-2\\sqrt{2}=-5(x_2-2\\sqrt{2})$，即 $x_1+5x_2=12\\sqrt{2}$。由韦达定理 $x_1+x_2=-\\frac{24\\sqrt{2}k^2}{9-6k^2}$，$x_1x_2=-\\frac{48k^2+32}{9-6k^2}$。
 
-联立解得 $x_2=\frac{3\sqrt{2}(4k^2+3)}{9-6k^2}$，代入 $x_1=12\sqrt{2}-5x_2$ 后代入韦达定理得：
-$12\sqrt{2}-4x_2=-\frac{24\sqrt{2}k^2}{9-6k^2}$，化简得 $16k^4-40k^2+9=0$。
+联立解得 $x_2=\\frac{3\\sqrt{2}(4k^2+3)}{9-6k^2}$，代入 $x_1=12\\sqrt{2}-5x_2$ 后代入韦达定理得：
+$12\\sqrt{2}-4x_2=-\\frac{24\\sqrt{2}k^2}{9-6k^2}$，化简得 $16k^4-40k^2+9=0$。
 
-解得 $k^2=\frac{5\pm\sqrt{7}}{4}$，即 $k=\pm\frac{\sqrt{5\pm\sqrt{7}}}{2}$。经检验，<strong style="color: red;">当 $k^2=\frac{5+\sqrt{7}}{4}$ 时满足 $\Delta>0$</strong>，故 $k=\pm\frac{\sqrt{5+\sqrt{7}}}{2}$。
+解得 $k^2=\\frac{5\\pm\\sqrt{7}}{4}$，即 $k=\\pm\\frac{\\sqrt{5\\pm\\sqrt{7}}}{2}$。经检验，<strong style="color: red;">当 $k^2=\\frac{5+\\sqrt{7}}{4}$ 时满足 $\\Delta>0$</strong>，故 $k=\\pm\\frac{\\sqrt{5+\\sqrt{7}}}{2}$。
 ```
 
 The `certainty` stands for your certainty of the answer. 0.0 means that you

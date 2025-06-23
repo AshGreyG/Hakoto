@@ -29,6 +29,7 @@ def generate_html(answer : str, analysis : str, mode : str = "no-picture") -> st
                 name = "no-picture-" +  time.strftime("%Y%m%d-%H%M%S") + ".html"
                 with open("./tmp/{}".format(name), "w", encoding = "utf-8") as new_html :
                     new_html.write(result)
+                    new_html.close()
 
                 print("✈️ Write answer and analysis to file ./tmp/{}".format(name))
 
@@ -63,22 +64,9 @@ def html_to_picture(name : str) -> str :
 if __name__ == "__main__" :
     name = generate_html(
         answer = """
-(1) $\\frac{x^2}{8} + \\frac{y^2}{2} = 1$ (2) 不在 (3) 最小值为 $\\frac{25}{144}$，斜率为 $\\pm 1$
-""", analysis = """
-第一问：由椭圆离心率 $e=\\frac{c}{a}=\\frac{\\sqrt{3}}{2}$ 得 $c=\\frac{\\sqrt{3}}{2}a$，根据椭圆性质 $b^2=a^2-c^2=a^2-\\frac{3}{4}a^2=\\frac{a^2}{4}$。将点 $(2,1)$ 代入椭圆标准方程 $\\frac{x^2}{a^2}+\\frac{y^2}{b^2}=1$ 得 $\\frac{4}{a^2}+\\frac{1}{\\frac{a^2}{4}}=1$，整理得 $\\frac{4}{a^2}+\\frac{4}{a^2}=1$，即 $\\frac{8}{a^2}=1$，解得 $a^2=8$，$b^2=2$，故椭圆方程为 $\\frac{x^2}{8} + \\frac{y^2}{2} = 1$。
-
-第二问：将点 $B(1,0)$ 代入椭圆方程 $\\frac{1}{8} + \\frac{0}{2} = \\frac{1}{8} \\neq 1$，因此点 $B$ 不在椭圆上。
-
-第三问：设直线 $l_1$ 的斜率为 $k$，则方程为 $y=k(x-1)$。与椭圆方程联立得 $\\frac{x^2}{8} + \\frac{k^2(x-1)^2}{2} = 1$，整理为 $(1+4k^2)x^2 -8k^2x + (4k^2-8) = 0$。判别式 $\\Delta = 64k^4 -4(1+4k^2)(4k^2-8) = 112k^2+32$。弦长公式得 $|PQ|=\\sqrt{1+k^2} \\cdot \\frac{\\sqrt{112k^2+32}}{1+4k^2}$。同理可得 $|MN|=\\sqrt{1+\\frac{1}{k^2}} \\cdot \\frac{\\sqrt{112/k^2+32}}{1+4/k^2}$。
-
-令 $t=k^2$，则表达式化简为 $S(t)=\\frac{(1+4t)^2}{16(1+t)(7t+2)}+\\frac{(t+4)^2}{16(1+t)(2t+7)}$。合并后得 $S(t)=\\frac{25t^2+46t+25}{16(1+t)(14t^2+53t+14)}$。
-
-求导过程详细计算：
-1. 计算分子导数：$(25t^2+46t+25)'=50t+46$
-2. 计算分母导数：$[16(1+t)(14t^2+53t+14)]'=16[(14t^2+53t+14)+(1+t)(28t+53)]$
-3. 令 $S'(t)=0$，即 $\\frac{50t+46}{25t^2+46t+25}=\\frac{1}{1+t}+\\frac{28t+53}{14t^2+53t+14}$
-4. 通过交叉相乘展开计算，最终解得 $t=1$ 是唯一临界点
-5. 验证二阶导数在 $t=1$ 处为正，确认为最小值点
-6. 代入 $t=1$ 得最小值为 $\\frac{25+46+25}{16\\times2\\times65}=\\frac{96}{2080}=\\frac{25}{144}$，此时 $k=\\pm 1$。
+(1) $a_n = 2^n$ (2) $T_n = \\frac{2n}{n+1}$
+""", 
+        analysis = """
+(1) 设首项为 $a_1$，公比为 $q$（$a_1>0,q>0$）。由 $3S_2 = a_1 + 2a_3$ 得 $3(a_1 + a_1q) = a_1 + 2a_1q^2$，化简得 $2q^2 - 3q - 2 = 0$。解得 $q=2$（舍负根）。由 $a_4=a_1q^3=16$ 得 $a_1=2$，故通项公式为 <strong style=\"color: red;\">$a_n = 2 \\times 2^{n-1} = 2^n$</strong>。\n\n(2) 由 $\\log_2 a_n = \\log_2(2^n) = n$，得 $\\frac{b_{n+1}}{b_n} = \\frac{n}{n+2}$。累乘得 $b_n = b_1 \\times \\prod_{k=1}^{n-1} \\frac{k}{k+2} = 1 \\times \\frac{1}{3} \\times \\frac{2}{4} \\times \\frac{3}{5} \\times \\cdots \\times \\frac{n-1}{n+1}$。分子分母约简后得 $b_n = \\frac{2}{n(n+1)} = 2\\left(\\frac{1}{n} - \\frac{1}{n+1}\\right)$。<strong style=\"color: red;\">且当 $n=1$ 时 $b_1=1$ 符合上式 </strong>，故 $T_n = \\sum_{k=1}^n b_k = 2\\sum_{k=1}^n \\left(\\frac{1}{k} - \\frac{1}{k+1}\\right) = 2\\left(1 - \\frac{1}{n+1}\\right) = \\frac{2n}{n+1}$。\n\n分类讨论原因：在数列问题中，<strong style=\"color: red;\">递推关系 $a_n = S_n - S_{n-1}$ 仅对 $n \\geq 2$ 成立</strong>，而 $n=1$ 时 $a_1 = S_1$ 需单独处理。例如求 $a_n$ 通项时，若用 $S_n$ 表达式求 $a_n$，必须分 $n=1$ 和 $n \\geq 2$ 讨论。在递推数列如 $\\{b_n\\}$ 中，若递推式定义域从 $n \\geq 2$ 开始（如 $b_n = f(b_{n-1})$），则 $b_1$ 需单独处理以保证完备性。
 """)
     html_to_picture(name)

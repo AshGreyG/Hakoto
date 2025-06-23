@@ -291,7 +291,7 @@ class ModelSolving :
         print("🤖 Answer to this question is {}".format(analysis))
         
         if certainty <= answer_certainty_value :
-            print("🐣 AI isn't sure for its answer: {}.\n   Please type y/n to continue. You can open your Firefox to review".format(answer))
+            print("🐣 AI isn't sure for its answer: {}.\n   Please type y/n to continue. You can open your Firefox to review".format(analysis))
             name = gen.generate_html(answer, analysis)
             subprocess.run(["firefox", "./tmp/{}".format(name)])
 

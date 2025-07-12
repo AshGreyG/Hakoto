@@ -96,3 +96,40 @@ are definitely not sure, and 1.0 means that you are definitely sure. This is a
 float value between 0.0 and 1.0.
 
 """
+
+prompt_box_select = r"""
+
+Select the two box in the picture:
++ box1: The picture that questioner uploads, usually its' a reduced-sized picture
+  or screenshot of questions or homework.
++ box2: The button that responder should upload to the platform, it has an upload
+  symbol (it's a plus `+`).
+
+Return the result in a JSON format similar to the following:
+
+``` json
+{
+  "questioner_box": [
+    "...",
+    "..."
+  ],
+  "responder_box": "..."
+}
+```
+
+The format of `questioner_box` and `responder_box` should be <bbox>x1 y1 x2 y2</bbox>,
+if you cannot find the box, return the `"null"`.
+
+EXAMPLE_RETURN_JSON
+
+``` json
+{
+  "questioner_box: [
+    "<bbox>100 200 300 300</bbox>",
+    "<bbox>200 200 400 600</bbox>"
+  ],
+  "responder_box": "<bbox>800 800 200 200</bbox>"
+}
+```
+
+"""

@@ -120,6 +120,9 @@ Return the result in a JSON format similar to the following:
 The format of `questioner_box` and `responder_box` should be <bbox>x1 y1 x2 y2</bbox>,
 if you cannot find the box, return the `"null"`.
 
++ DO let x1 < x2 and y1 < y2, (x1, y1) is the top-left corner and (x2, y2) is the bottom-
+  right corner.
+
 EXAMPLE_RETURN_JSON
 
 ``` json
@@ -128,7 +131,7 @@ EXAMPLE_RETURN_JSON
     "<bbox>100 200 300 300</bbox>",
     "<bbox>200 200 400 600</bbox>"
   ],
-  "responder_box": "<bbox>800 800 200 200</bbox>"
+  "responder_box": "<bbox>100 100 200 200</bbox>"
 }
 ```
 

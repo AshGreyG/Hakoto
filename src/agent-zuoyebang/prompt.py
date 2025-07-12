@@ -97,7 +97,7 @@ float value between 0.0 and 1.0.
 
 """
 
-prompt_box_select = r"""
+prompt_bbox_select = r"""
 
 Select the two box in the picture:
 + box1: The picture that questioner uploads, usually its' a reduced-sized picture

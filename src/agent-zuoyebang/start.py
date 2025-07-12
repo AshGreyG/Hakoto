@@ -18,7 +18,7 @@ class WhichScreen(Enum) :
     TASK_HALL_ANSWERING = 3
     QUESTION = 4
 
-CURRENT_SCREEN = WhichScreen.TASK_HALL_INIT
+CURRENT_SCREEN = WhichScreen.TASK_HALL_WAITING
 
 REPHRASE_CLIENT = Ark(api_key = "")
 ANSWER_CLIENT = OpenAI(api_key = "", base_url = "")
@@ -66,8 +66,19 @@ class Utils :
         ))
 
     @staticmethod
+    def parse_bbox_to_center(bbox : str) -> tuple[float, float] :
+        x_scale = float(os.getenv("x_scale"))
+        y_scale = float(os.getenv("y_scale"))
+
+        xy = map(float, bbox.replace("<bbox>", "").replace("</bbox>", "").split(" "))
+        return (
+            (xy[0] + xy[2]) * x_scale / 2, 
+            (xy[1] + xy[3]) * y_scale / 2
+        )
+
+    @staticmethod
     def ocr_result(name : str) -> str :
-        
+
         ocr_text = pytesseract.image_to_string(
             "./tmp/{}".format(name),
             lang = "chi_sim"
@@ -111,7 +122,6 @@ class Utils :
                     return
 
         os.remove("./tmp/" + screenshot)
-
 
 class DeviceActions :
     @staticmethod
@@ -180,38 +190,99 @@ class QuestionActions(PageActions) :
 
     @staticmethod
     def open_user_picture() -> None :
-        Utils.click_position("button_user_question_picture", "user question picture")
+        Utils.click_position(
+            "button_user_question_picture",
+            "user question picture"
+        )
 
     @staticmethod
     def close_user_picture() -> None :
-        Utils.click_position("button_user_question_picture", "close user question picture")
+        Utils.click_position(
+            "button_user_question_picture",
+            "close user question picture"
+        )
 
     @staticmethod
     def take_from_gallery() -> None :
-        Utils.click_position("button_take_from_gallery", "take from gallery")
+        Utils.click_position(
+            "button_take_from_gallery",
+            "take from gallery"
+        )
 
     @staticmethod
     def select_first_picture() -> None :
-        Utils.click_position("button_select_first_picture", "select first picture")
+        Utils.click_position(
+            "button_select_first_picture",
+            "select first picture"
+        )
     
     @staticmethod
     def confirm_first_picture() -> None :
-        Utils.click_position("button_confirm_first_picture", "confirm first picture")
+        Utils.click_position(
+            "button_confirm_first_picture",
+            "confirm first picture"
+        )
 
     @staticmethod
     def confirm_upload() -> None :
-        Utils.click_position("button_confirm_upload", "confirm upload")
+        Utils.click_position(
+            "button_confirm_upload",
+            "confirm upload"
+        )
     
     @staticmethod
     def upload_answer() -> None :
-        Utils.click_position("button_upload_answer", "upload answer")
+        Utils.click_position(
+            "button_upload_answer", 
+            "upload answer"
+        )
 
     @staticmethod
     def confirm_answer() -> None :
-        Utils.click_position("button_confirm_answer", "confirm answer")
-
+        Utils.click_position(
+            "button_confirm_answer", 
+            "confirm answer"
+        )
 
 class ModelSolving :
+    @staticmethod
+    def get_bbox_center(image : str) -> tuple[list[tuple[float, float]], tuple[float, float]] :
+
+        image_base64_content = []
+        image_base64_content.append({
+            "type": "image_url",
+            "image_url": {
+                "url": "data:image/png;base64,{}".format(Utils.encode_image(image))
+            }
+        })
+
+        messages = [
+            { "role": "system", "content": prompt.prompt_bbox_select },
+            { "role": "user", "content": image_base64_content }
+        ]
+
+        response_json = REPHRASE_CLIENT.chat.completions.create(
+            model = "doubao-1.5-vision-pro-250328",
+            messages = messages,
+            response_format = {
+                "type": "json_object"
+            },
+            temperature = 0.0,
+            stream = False
+        )
+
+        bbox_json = json.loads(response_json.choices[0].message.content)
+
+        print("🤖 Get border box of question pictures and submit button: {}".format(bbox_json))
+
+        questioner_str : list[str] = bbox_json["questioner_box"]
+        responder_str : str = bbox_json["responder_box"]
+
+        questioners = map(Utils.parse_bbox_to_center, questioner_str)
+        responder = Utils.parse_bbox_to_center(responder_str)
+
+        return (questioners, responder)
+
     @staticmethod
     def get_rephrased_question(names : list[str]) -> str :
         rephrased_certainty_value = float(os.getenv("rephrased_certainty"))
@@ -262,7 +333,6 @@ class ModelSolving :
             else :
                 print("💥 Rephrased question is not correct.")
                 exit()
-
 
     @staticmethod
     def get_ai_answer(rephrased : str) -> tuple[str, str] :
@@ -322,18 +392,33 @@ if __name__ == "__main__" :
             case WhichScreen.QUESTION :
                 overall = QuestionActions.take_user_question()
                 _()
-                QuestionActions.open_user_picture()
+                questioners, responder = ModelSolving.get_bbox_center(overall)
                 _()
-                details = QuestionActions.take_user_question()
-                _()
-                QuestionActions.close_user_picture()
-                _()
-                rephrased = ModelSolving.get_rephrased_question([overall, details])
+
+                details : list[str] = []
+                for questioner in questioners :
+                    os.environ["button_user_question_picture"] = "{},{}".format(
+                        questioner[0],
+                        questioner[1]
+                    )
+                    QuestionActions.open_user_picture()
+                    _()
+                    details.append(QuestionActions.take_user_question())
+                    _()
+                    QuestionActions.close_user_picture()
+                    _()
+
+                rephrased = ModelSolving.get_rephrased_question([overall, *details])
                 answer, analysis = ModelSolving.get_ai_answer(rephrased)
                 html_name = gen.generate_html(answer, analysis)
                 picture_name = gen.html_to_picture(html_name)
                 _()
                 DeviceActions.transfer_answer_picture(picture_name)
+
+                os.environ["button_take_from_gallery"] = "{},{}".format(
+                    responder[0],
+                    responder[1]
+                )
                 QuestionActions.take_from_gallery()
                 _()
                 QuestionActions.select_first_picture()

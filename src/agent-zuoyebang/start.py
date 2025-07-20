@@ -18,7 +18,7 @@ class WhichScreen(Enum) :
     TASK_HALL_ANSWERING = 3
     QUESTION = 4
 
-CURRENT_SCREEN = WhichScreen.TASK_HALL_WAITING
+CURRENT_SCREEN = WhichScreen.QUESTION
 
 REPHRASE_CLIENT = Ark(api_key = "")
 ANSWER_CLIENT = OpenAI(api_key = "", base_url = "")
@@ -70,7 +70,7 @@ class Utils :
         x_scale = float(os.getenv("x_scale"))
         y_scale = float(os.getenv("y_scale"))
 
-        xy = map(float, bbox.replace("<bbox>", "").replace("</bbox>", "").split(" "))
+        xy : list[float] = list(map(float, bbox.replace("<bbox>", "").replace("</bbox>", "").split(" ")))
         return (
             (xy[0] + xy[2]) * x_scale / 2, 
             (xy[1] + xy[3]) * y_scale / 2
@@ -167,10 +167,21 @@ class DeviceActions :
         return name
 
     @staticmethod
-    def transfer_answer_picture(name : str) -> None :
-        android_path = os.getenv("android_device_screenshot_path")
+    def transfer_answer_picture(name : str, mode : str) -> None :
+        match mode :
+            case "screenshot" :
+                android_path = os.getenv("android_device_screenshot_path")
+            case "answer" :
+                android_path = os.getenv("android_device_wechat_path")
         local_path = "./tmp/{}".format(name)
         subprocess.run(["adb", "push", local_path, android_path])
+
+    @staticmethod
+    def get_system_match_problem() -> str :
+        subprocess.run(["adb", "shell", "input", "swipe", "500", "1500", "500", "500", "300"])
+        name = DeviceActions.take_screenshot("system-match")
+        subprocess.run(["adb", "shell", "input", "swipe", "500", "500", "500", "1500", "300"])
+        return name
 
 class PageActions : ...
 
@@ -207,6 +218,13 @@ class QuestionActions(PageActions) :
         Utils.click_position(
             "button_take_from_gallery",
             "take from gallery"
+        )
+
+    @staticmethod
+    def upload_picture() -> None :
+        Utils.click_position(
+            "button_upload_picture",
+            "upload picture"
         )
 
     @staticmethod
@@ -278,7 +296,9 @@ class ModelSolving :
         questioner_str : list[str] = bbox_json["questioner_box"]
         responder_str : str = bbox_json["responder_box"]
 
-        questioners = map(Utils.parse_bbox_to_center, questioner_str)
+        print("🎯 Get str {} {}".format(questioner_str, responder_str))
+
+        questioners = list(map(Utils.parse_bbox_to_center, questioner_str))
         responder = Utils.parse_bbox_to_center(responder_str)
 
         return (questioners, responder)
@@ -312,6 +332,8 @@ class ModelSolving :
             stream = False
         )
 
+        print("🐝 Raw response: {}".format(response_json))
+
         rephrased_json = json.loads(response_json.choices[0].message.content)
 
         print("🤖 Get rephrased question as {}.".format(rephrased_json))
@@ -344,7 +366,7 @@ class ModelSolving :
         ]
 
         response_json = ANSWER_CLIENT.chat.completions.create(
-            model = "deepseek-chat",
+            model = "deepseek-reasoner",
             messages = messages,
             response_format = {
                 "type": "json_object"
@@ -353,9 +375,11 @@ class ModelSolving :
             stream = False
         )
 
+        print("🐝 Raw response: {}".format(response_json))
+
         answer_analysis_json = json.loads(response_json.choices[0].message.content)
-        answer = answer_analysis_json["answer"]
-        analysis = answer_analysis_json["analysis"]
+        answer : str = answer_analysis_json["answer"]
+        analysis : str = answer_analysis_json["analysis"]
         certainty = answer_analysis_json["certainty"]
 
         print("🤖 Answer to this question is {}".format(analysis))
@@ -407,19 +431,21 @@ if __name__ == "__main__" :
                     _()
                     QuestionActions.close_user_picture()
                     _()
-
-                rephrased = ModelSolving.get_rephrased_question([overall, *details])
+                system_match = DeviceActions.get_system_match_problem()
+                rephrased = ModelSolving.get_rephrased_question([overall, system_match, *details])
                 answer, analysis = ModelSolving.get_ai_answer(rephrased)
                 html_name = gen.generate_html(answer, analysis)
                 picture_name = gen.html_to_picture(html_name)
                 _()
-                DeviceActions.transfer_answer_picture(picture_name)
+                DeviceActions.transfer_answer_picture(picture_name, "answer")
 
                 os.environ["button_take_from_gallery"] = "{},{}".format(
                     responder[0],
                     responder[1]
                 )
                 QuestionActions.take_from_gallery()
+                _()
+                QuestionActions.upload_picture()
                 _()
                 QuestionActions.select_first_picture()
                 _()

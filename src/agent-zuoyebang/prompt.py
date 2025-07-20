@@ -71,9 +71,11 @@ question.
 + DO NOT use title (`#`), list (`+`), italic (`*`), emphasize (`**`), table or other
   structured syntaxes. You should only use plaintext and LaTeX-style math formulas.
 + DO NOT escape calculation steps like finding the derivative.
++ DO NOT just wrap the answer with <strong> label, the import or key part is always a
+  part of analysis.
 + DO use <strong style="color: red;"></strong> to wrap the important or key part.
 + You MUST use at least <strong style="color: red;"></strong> once.
-+ DO escape `\` to `\\`, for example, return command like `\\frac`
++ DO escape `\` to `\\`, for example, return command like `\\frac` and `\\neq`
 
 EXAMPLE_`analysis`_CONTENT
 

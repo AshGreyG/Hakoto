@@ -3,6 +3,7 @@ import subprocess
 import os
 import time
 import json
+from typing import Tuple
 import pytesseract
 from dotenv import load_dotenv
 from enum import Enum
@@ -35,7 +36,7 @@ def init_models() -> None :
 
 class Utils :
     @staticmethod
-    def get_position_env(name : str) -> tuple[float, float] :
+    def get_position_env(name : str) -> Tuple[float, ...] :
         """
         This function reads from environment and transform position string
         into tuple of coordinate.
@@ -46,7 +47,7 @@ class Utils :
             The coordinate syntax of position string, as a tuple.
         """
 
-        pos_str = os.getenv(name)
+        pos_str : str = os.getenv(name)
         return tuple(map(float, pos_str.split(",")))
 
     @staticmethod
